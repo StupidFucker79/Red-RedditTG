@@ -8,4 +8,5 @@ praw
 aiohttp
 redgifs
 telegraph
-pyffmpeg
+static-ffmpeg
+vcsi
