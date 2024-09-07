@@ -114,7 +114,7 @@ async def main():
  async with app:
     subreddit_name = 'boobs'  # replace with your target subreddit
     image_urls, gif_paths = await get_image_urls(subreddit_name)
-
+    logging.info(image_urls)
     uploaded_image_urls = []
     for image_url in image_urls:
         if not check_db(db, collection_name, image_url):
