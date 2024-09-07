@@ -140,12 +140,12 @@ async def main():
             if any(ext in image_url.lower() for ext in ["jpg", "png", "jpeg"]):
                 local_image_path = download_and_compress_image(image_url)
                 if local_image_path:
-                    uploaded_url = upload_image_to_telegraph(local_image_path)
-                    if uploaded_url:
-                        up_url = f"https://graph.org{uploaded_url}"
-                        uploaded_image_urls.append(up_url)
+                    #uploaded_url = upload_image_to_telegraph(local_image_path)
+                    if True:
+                        #up_url = f"https://graph.org{uploaded_url}"
+                        uploaded_image_urls.append(image_url)
                         await app.send_photo(LOG_ID, photo=local_image_path)
-                        result = {"URL": image_url, "Image": up_url}
+                        result = {"URL": image_url}
                         insert_document(db, collection_name, result)
                         os.remove(local_image_path)
 
