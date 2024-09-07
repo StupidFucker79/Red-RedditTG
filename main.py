@@ -1,3 +1,4 @@
+from pyffmpeg import FFmpeg
 import os
 import logging
 import requests
@@ -100,8 +101,11 @@ async def main():
                 local_path = download_and_compress_image(url)
                 await app.send_photo(LOG_ID, photo=local_path)
             elif "redgif" in url:
+                outp = f"{hash(url)}.png"
                 local_path =  await download_redgif(url)
-                await app.send_video(LOG_ID, video=local_path)
+                ff = FFmpeg()
+                ff.convert(local_path, outp)
+                await app.send_video(LOG_ID, video=local_path,thumb=outp)
             if local_path:
                     if True:
                         uploaded_urls.append(url)
