@@ -112,7 +112,7 @@ async def download_redgif(link):
 # Async main function to process subreddit images
 async def main():
  async with app:
-    subreddit_name = 'wallpapers'  # replace with your target subreddit
+    subreddit_name = 'braless'  # replace with your target subreddit
     image_urls, gif_paths = await get_image_urls(subreddit_name)
 
     uploaded_image_urls = []
@@ -125,6 +125,7 @@ async def main():
                     if uploaded_url:
                         up_url = f"https://graph.org{uploaded_url}"
                         uploaded_image_urls.append(up_url)
+                        await app.send_photo(LOG_ID,photo=local_image_path)
                         result = {"URL": image_url, "Image": up_url}
                         insert_document(db, collection_name, result)
                         os.remove(local_image_path)
