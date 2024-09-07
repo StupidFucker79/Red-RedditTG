@@ -65,22 +65,33 @@ def download_and_compress_image(img_url, save_path="compressed.jpg"):
                 for chunk in response.iter_content(1024):
                     f.write(chunk)
             with Image.open(save_path) as img:
-                img.save(save_path)
+                # Convert RGBA to RGB if necessary
+                if img.mode == "RGBA":
+                    img = img.convert("RGB")
+                img.save(save_path, "JPEG")
             return save_path
     except Exception as e:
         logging.error(f"Failed to download or compress image: {e}")
         return None
 
+
 # Upload an image to Telegraph
 def upload_image_to_telegraph(image_path):
     try:
         with open(image_path, 'rb') as f:
-            return telegraph.upload_file(f)[0]["src"]
+            response = telegraph.upload_file(f)
+            # Make sure the response is a list of dictionaries
+            if isinstance(response, list) and len(response) > 0 and "src" in response[0]:
+                return response[0]["src"]
+            else:
+                logging.error(f"Unexpected Telegraph response: {response}")
+                return None
     except exceptions.TelegraphException as e:
         logging.error(f"TelegraphException: {e}")
     except Exception as e:
         logging.error(f"Error uploading to Telegraph: {e}")
     return None
+
 
 # Upload multiple images to Telegraph page
 def upload_content_to_telegraph(title, content):
