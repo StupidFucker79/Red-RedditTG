@@ -34,9 +34,6 @@ database_name = "Spidydb"
 db = connect_to_mongodb(DATABASE, database_name)
 collection_name = COLLECTION_NAME
 
-# Telegraph client
-telegraph = Telegraph()
-telegraph.create_account(short_name='PythonTelegraphBot')
 
 # Pyrogram client
 app = Client("SpidyReddit", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN, workers=100)
