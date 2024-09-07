@@ -116,9 +116,10 @@ async def main():
     image_urls, gif_paths = await get_image_urls(subreddit_name)
     uploaded_image_urls = []
     for image_url in image_urls:
+        print(image_url)
         if not check_db(db, collection_name, image_url):
-            logging.info(image_url)
             if any(ext in image_url.lower() for ext in ["jpg", "png", "jpeg"]):
+                logging.info(image_url)
                 local_image_path = download_and_compress_image(image_url)
                 if local_image_path:
                     uploaded_url = upload_image_to_telegraph(local_image_path)
