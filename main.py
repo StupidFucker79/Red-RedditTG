@@ -117,7 +117,7 @@ async def main():
                 local_path = download_and_compress_image(url)
                 await app.send_photo(LOG_ID, photo=local_path)
             elif "redgif" in url:
-                outp = f"{hash(url)}.png"
+                outp = f"thumb.png"
                 local_path =  await download_redgif(url)
                 generate_thumbnail(local_path, outp)
                 await app.send_video(LOG_ID, video=local_path,thumb=outp)
