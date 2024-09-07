@@ -98,7 +98,7 @@ async def main():
         if not check_db(db, collection_name, url):
             if any(ext in url.lower() for ext in ["jpg", "png", "jpeg"]):
                 local_path = download_and_compress_image(url)
-            else:
+            elif "redgif" in url:
                 local_path =  await download_redgif(url)
             if local_path:
                     if True:
