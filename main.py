@@ -101,7 +101,7 @@ async def main():
             if any(ext in url.lower() for ext in ["jpg", "png", "jpeg"]):
                 local_path = download_and_compress_image(url)
             else:
-                local_path =  download_redgif(url)
+                local_path =  await download_redgif(url)
             if local_path:
                     if True:
                         uploaded_urls.append(url)
