@@ -98,12 +98,13 @@ async def main():
         if not check_db(db, collection_name, url):
             if any(ext in url.lower() for ext in ["jpg", "png", "jpeg"]):
                 local_path = download_and_compress_image(url)
+                await app.send_photo(LOG_ID, photo=local_path)
             elif "redgif" in url:
                 local_path =  await download_redgif(url)
+                await app.send_video(LOG_ID, video=local_path)
             if local_path:
                     if True:
                         uploaded_urls.append(url)
-                        await app.send_photo(LOG_ID, photo=local_path)
                         result = {"URL": url}
                         insert_document(db, collection_name, result)
                         os.remove(local_path)
