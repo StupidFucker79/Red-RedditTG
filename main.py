@@ -1,4 +1,4 @@
-from pyffmpeg import FFmpeg
+import static_ffmpeg
 import os
 import logging
 import requests
@@ -30,6 +30,8 @@ logging.basicConfig(
     ]
 )
 
+static_ffmpeg.add_paths()
+
 # MongoDB setup
 database_name = "Spidydb"
 db = connect_to_mongodb(DATABASE, database_name)
@@ -52,6 +54,19 @@ async def get_urls(subreddit_name):
         elif submission.url.startswith("https://i.redd.it"):
             urls.append(submission.url)
     return urls
+
+def generate_thumbnail(file_name, output_filename):
+    command = [
+        'vcsi', file_name, '-t', '-g', '1x1',
+        '--metadata-position', 'hidden',
+        '--start-delay-percent', '25', '-o', output_filename
+    ]
+    try:
+        subprocess.run(command, check=True, capture_output=True)
+        print(f"Thumbnail saved as {output_filename}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error generating thumbnail for {file_name}: {e}")
+
 
 # Download and compress image
 def download_and_compress_image(img_url, save_path="compressed.jpg"):
