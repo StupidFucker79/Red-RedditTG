@@ -20,11 +20,14 @@ reddit = praw.Reddit(
     check_for_async=False
 )
 
-# Configure logging
+# Configure logging to file and console
 logging.basicConfig(
-    filename='Reddit.log',
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("Reddit.log"),  # Log to file
+        logging.StreamHandler()  # Log to console
+    ]
 )
 
 # MongoDB setup
@@ -73,6 +76,7 @@ def download_and_compress_image(img_url, save_path="compressed.jpg"):
     except Exception as e:
         logging.error(f"Failed to download or compress image: {e}")
         return None
+
 
 
 # Upload an image to Telegraph
@@ -127,21 +131,19 @@ async def main():
     image_urls, gif_paths = await get_image_urls(subreddit_name)
     uploaded_image_urls = []
     for image_url in image_urls:
-        print(image_url)
+        logging.info(f"Processing image URL: {image_url}")  # This will now print and log
         if not check_db(db, collection_name, image_url):
             if any(ext in image_url.lower() for ext in ["jpg", "png", "jpeg"]):
-                logging.info(image_url)
                 local_image_path = download_and_compress_image(image_url)
                 if local_image_path:
                     uploaded_url = upload_image_to_telegraph(local_image_path)
                     if uploaded_url:
                         up_url = f"https://graph.org{uploaded_url}"
                         uploaded_image_urls.append(up_url)
-                        await app.send_photo(LOG_ID,photo=local_image_path)
+                        await app.send_photo(LOG_ID, photo=local_image_path)
                         result = {"URL": image_url, "Image": up_url}
                         insert_document(db, collection_name, result)
                         os.remove(local_image_path)
-                
 
     if uploaded_image_urls:
         logging.info(f"Uploaded images: {uploaded_image_urls}")
