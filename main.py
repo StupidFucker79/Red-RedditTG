@@ -1,14 +1,14 @@
 import os
 import logging
+import requests
 from pyrogram import Client
-import asyncio
 import praw
-import aiohttp
 from telegraph import Telegraph, exceptions
 import redgifs
 from PIL import Image
 from config import *
 from database import *
+import asyncio
 
 # Reddit API credentials
 reddit = praw.Reddit(
@@ -40,7 +40,7 @@ telegraph.create_account(short_name='PythonTelegraphBot')
 app = Client("SpidyReddit", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN, workers=100)
 
 # Get image URLs from a subreddit
-def get_image_urls(subreddit_name):
+async def get_image_urls(subreddit_name):
     image_urls = []
     gif_paths = []
     for submission in reddit.subreddit(subreddit_name).hot(limit=50):  # limit to 50 submissions
@@ -49,23 +49,24 @@ def get_image_urls(subreddit_name):
             for image_item in submission.media_metadata.values():
                 image_urls.append(image_item['s']['u'])
         elif "redgif" in submission.url:
-            gif = download_redgif(submission.url)
+            gif = await download_redgif(submission.url)
             if gif:
                 gif_paths.append(gif)
         elif submission.url.startswith("https://i.redd.it"):
             image_urls.append(submission.url)
     return image_urls, gif_paths
 
-# Asynchronous download and compress image
-async def download_and_compress_image(session, img_url, save_path="compressed.jpg"):
+# Download and compress image
+def download_and_compress_image(img_url, save_path="compressed.jpg"):
     try:
-        async with session.get(img_url) as response:
-            if response.status == 200:
-                with open(save_path, 'wb') as f:
-                    f.write(await response.read())
-                with Image.open(save_path) as img:
-                    img.save(save_path)
-                return save_path
+        response = requests.get(img_url, stream=True)
+        if response.status_code == 200:
+            with open(save_path, 'wb') as f:
+                for chunk in response.iter_content(1024):
+                    f.write(chunk)
+            with Image.open(save_path) as img:
+                img.save(save_path)
+            return save_path
     except Exception as e:
         logging.error(f"Failed to download or compress image: {e}")
         return None
@@ -93,7 +94,7 @@ def upload_content_to_telegraph(title, content):
     return None
 
 # Download Redgif
-def download_redgif(link):
+async def download_redgif(link):
     try:
         api = redgifs.API()
         api.login()
@@ -108,43 +109,34 @@ def download_redgif(link):
     finally:
         api.close()
 
-
-
-
-
-# Main function to process subreddit images
+# Async main function to process subreddit images
 async def main():
+ async with app:
     subreddit_name = 'wallpapers'  # replace with your target subreddit
-    image_urls, gif_paths = get_image_urls(subreddit_name)
+    image_urls, gif_paths = await get_image_urls(subreddit_name)
 
     uploaded_image_urls = []
-    async with aiohttp.ClientSession() as session:
-        tasks = []
-        for image_url in image_urls:
-            if not check_db(db, collection_name, image_url):
-                if any(ext in image_url.lower() for ext in ["jpg", "png", "jpeg"]):
-                    tasks.append(download_and_compress_image(session, image_url))
-                else:
-                     print(image_url)
-
-        # Await all download tasks
-        downloaded_images = await asyncio.gather(*tasks)
-
-        # Process each downloaded image
-        for local_image_path, image_url in zip(downloaded_images, image_urls):
-            if local_image_path:
-                uploaded_url = upload_image_to_telegraph(local_image_path)
-                if uploaded_url:
-                    up_url = f"https://graph.org{uploaded_url}"
-                    uploaded_image_urls.append(up_url)
-                    result = {"URL": image_url, "Image": up_url}
-                    insert_document(db, collection_name, result)
-                    os.remove(local_image_path)
+    for image_url in image_urls:
+        if not check_db(db, collection_name, image_url):
+            if any(ext in image_url.lower() for ext in ["jpg", "png", "jpeg"]):
+                local_image_path = download_and_compress_image(image_url)
+                if local_image_path:
+                    uploaded_url = upload_image_to_telegraph(local_image_path)
+                    if uploaded_url:
+                        up_url = f"https://graph.org{uploaded_url}"
+                        uploaded_image_urls.append(up_url)
+                        result = {"URL": image_url, "Image": up_url}
+                        insert_document(db, collection_name, result)
+                        os.remove(local_image_path)
+            else:
+                print(image_url)
+                
 
     if uploaded_image_urls:
         logging.info(f"Uploaded images: {uploaded_image_urls}")
     else:
         logging.error("Failed to upload images to Telegraph.")
 
+# Running the Pyrogram app and async main() properly
 if __name__ == "__main__":
-    app.run(main)
+    app.run(main())
