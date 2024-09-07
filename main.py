@@ -42,9 +42,9 @@ telegraph.create_account(short_name='PythonTelegraphBot')
 app = Client("SpidyReddit", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN, workers=100)
 
 # Get image URLs from a subreddit
-async def get_image_urls(subreddit_name):
+async def get_urls(subreddit_name):
     urls = []
-    for submission in reddit.subreddit(subreddit_name).hot(limit=50):  # limit to 50 submissions
+    for submission in reddit.subreddit(subreddit_name).hot(limit=20):  # limit to 50 submissions
         if "gallery" in submission.url:
             submission = reddit.submission(url=submission.url)
             for image_item in submission.media_metadata.values():
@@ -96,24 +96,26 @@ async def download_redgif(link):
 async def main():
  async with app:
     subreddit_name = 'braless'  # replace with your target subreddit
-    image_urls, gif_paths = await get_image_urls(subreddit_name)
-    uploaded_image_urls = []
-    for image_url in image_urls:
-        logging.info(f"Processing image URL: {image_url}")  # This will now print and log
-        if not check_db(db, collection_name, image_url):
-            if any(ext in image_url.lower() for ext in ["jpg", "png", "jpeg"]):
-                local_image_path = download_and_compress_image(image_url)
-                if local_image_path:
+    urls = await get_urls(subreddit_name)
+    uploaded_urls = []
+    for url in urls:
+        logging.info(f"Processing image URL: {url}")  # This will now print and log
+        if not check_db(db, collection_name, url):
+            if any(ext in url.lower() for ext in ["jpg", "png", "jpeg"]):
+                local_path = download_and_compress_image(url)
+            else:
+                local_path =  download_redgif(url)
+            if local_path:
                     if True:
-                        uploaded_image_urls.append(image_url)
-                        await app.send_photo(LOG_ID, photo=local_image_path)
-                        result = {"URL": image_url}
+                        uploaded_urls.append(url)
+                        await app.send_photo(LOG_ID, photo=local_path)
+                        result = {"URL": url}
                         insert_document(db, collection_name, result)
-                        os.remove(local_image_path)
+                        os.remove(local_path)
                         
 
-    if uploaded_image_urls:
-        logging.info(f"Uploaded images: {uploaded_image_urls}")
+    if uploaded_urls:
+        logging.info(f"Uploaded images: {uploaded_urls}")
     else:
         logging.error("Failed to upload images to Telegraph.")
 
