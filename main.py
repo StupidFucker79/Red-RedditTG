@@ -118,8 +118,7 @@ async def main():
             elif "redgif" in url:
                 outp = f"{hash(url)}.png"
                 local_path =  await download_redgif(url)
-                ff = FFmpeg()
-                ff.convert(local_path, outp)
+                generate_thumbnail(local_path, outp)
                 await app.send_video(LOG_ID, video=local_path,thumb=outp)
             if local_path:
                     if True:
