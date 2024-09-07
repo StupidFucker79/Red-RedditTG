@@ -84,17 +84,21 @@ def upload_image_to_telegraph(image_path):
     try:
         with open(image_path, 'rb') as f:
             response = telegraph.upload_file(f)
-            # Make sure the response is a list of dictionaries
-            if isinstance(response, list) and len(response) > 0 and "src" in response[0]:
-                return response[0]["src"]
+            # Check if the response is a list and if it contains a dictionary with the key "src"
+            if isinstance(response, list) and len(response) > 0:
+                file_info = response[0]  # Access the first element
+                if isinstance(file_info, dict) and "src" in file_info:
+                    return file_info["src"]  # Return the "src" attribute
+                else:
+                    logging.error(f"Unexpected response format: {file_info}")
             else:
-                logging.error(f"Unexpected Telegraph response: {response}")
-                return None
+                logging.error(f"Invalid response from Telegraph: {response}")
     except exceptions.TelegraphException as e:
         logging.error(f"TelegraphException: {e}")
     except Exception as e:
         logging.error(f"Error uploading to Telegraph: {e}")
     return None
+
 
 
 # Upload multiple images to Telegraph page
