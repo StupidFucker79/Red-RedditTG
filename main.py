@@ -118,6 +118,7 @@ async def main():
     uploaded_image_urls = []
     for image_url in image_urls:
         if not check_db(db, collection_name, image_url):
+            logging.info(image_url)
             if any(ext in image_url.lower() for ext in ["jpg", "png", "jpeg"]):
                 local_image_path = download_and_compress_image(image_url)
                 if local_image_path:
@@ -129,8 +130,6 @@ async def main():
                         result = {"URL": image_url, "Image": up_url}
                         insert_document(db, collection_name, result)
                         os.remove(local_image_path)
-            else:
-                print(image_url)
                 
 
     if uploaded_image_urls:
