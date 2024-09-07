@@ -3,7 +3,7 @@ import static_ffmpeg
 import os
 import logging
 import requests
-from pyrogram import Client
+from pyrogram import Client, filters
 import praw
 import redgifs
 from PIL import Image
@@ -31,6 +31,9 @@ logging.basicConfig(
     ]
 )
 
+# Suppress Pyrogram logs
+logging.getLogger("pyrogram").setLevel(logging.WARNING)
+
 static_ffmpeg.add_paths()
 
 # MongoDB setup
@@ -38,24 +41,24 @@ database_name = "Spidydb"
 db = connect_to_mongodb(DATABASE, database_name)
 collection_name = COLLECTION_NAME
 
-
 # Pyrogram client
 app = Client("SpidyReddit", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN, workers=100)
 
 # Get image URLs from a subreddit
 async def get_urls(subreddit_name):
     urls = []
-    for submission in reddit.subreddit(subreddit_name).hot(limit=20):  # limit to 50 submissions
+    for submission in reddit.subreddit(subreddit_name).hot(limit=20):  # limit to 20 submissions
         if "gallery" in submission.url:
             submission = reddit.submission(url=submission.url)
             for image_item in submission.media_metadata.values():
                 urls.append(image_item['s']['u'])
         elif "redgif" in submission.url:
-                urls.append(submission.url)
+            urls.append(submission.url)
         elif submission.url.startswith("https://i.redd.it"):
             urls.append(submission.url)
     return urls
 
+# Generate thumbnail using vcsi
 def generate_thumbnail(file_name, output_filename):
     command = [
         'vcsi', file_name, '-t', '-g', '1x1',
@@ -67,7 +70,6 @@ def generate_thumbnail(file_name, output_filename):
         print(f"Thumbnail saved as {output_filename}")
     except subprocess.CalledProcessError as e:
         print(f"Error generating thumbnail for {file_name}: {e}")
-
 
 # Download and compress image
 def download_and_compress_image(img_url, save_path="compressed.jpg"):
@@ -87,7 +89,6 @@ def download_and_compress_image(img_url, save_path="compressed.jpg"):
         logging.error(f"Failed to download or compress image: {e}")
         return None
 
-
 # Download Redgif
 async def download_redgif(link):
     try:
@@ -106,33 +107,42 @@ async def download_redgif(link):
 
 # Async main function to process subreddit images
 async def main():
- async with app:
-    subreddit_name = 'BlowJob'  # replace with your target subreddit
-    urls = await get_urls(subreddit_name)
-    uploaded_urls = []
-    for url in urls:
-        logging.info(f"Processing URL: {url}")  # This will now print and log
-        if not check_db(db, collection_name, url):
-            if any(ext in url.lower() for ext in ["jpg", "png", "jpeg"]):
-                local_path = download_and_compress_image(url)
-                await app.send_photo(LOG_ID, photo=local_path)
-            elif "redgif" in url:
-                outp = f"thumb.png"
-                local_path =  await download_redgif(url)
-                generate_thumbnail(local_path, outp)
-                await app.send_video(LOG_ID, video=local_path,thumb=outp)
-            if local_path:
-                    if True:
+    async with app:
+        subreddit_name = 'BlowJob'  # Replace with your target subreddit
+        urls = await get_urls(subreddit_name)
+        uploaded_urls = []
+
+        for url in urls:
+            logging.info(f"Processing URL: {url}")  # This will now print and log
+            if not check_db(db, collection_name, url):
+                local_path = None
+                try:
+                    # Process images
+                    if any(ext in url.lower() for ext in ["jpg", "png", "jpeg"]):
+                        local_path = download_and_compress_image(url)
+                        await app.send_photo(LOG_ID, photo=local_path)
+                    # Process redgifs
+                    elif "redgif" in url:
+                        outp = "thumb.png"
+                        local_path = await download_redgif(url)
+                        generate_thumbnail(local_path, outp)
+                        await app.send_video(LOG_ID, video=local_path, thumb=outp)
+
+                    # If file downloaded, save the URL to the database and clean up
+                    if local_path:
                         uploaded_urls.append(url)
                         result = {"URL": url}
                         insert_document(db, collection_name, result)
                         os.remove(local_path)
-                        
 
-    if uploaded_urls:
-        logging.info(f"Uploaded images: {uploaded_urls}")
-    else:
-        logging.error("Failed to upload images to Telegraph.")
+                except Exception as e:
+                    logging.error(f"Error processing URL {url}: {e}")
+
+        # Log the result
+        if uploaded_urls:
+            logging.info(f"Uploaded images: {uploaded_urls}")
+        else:
+            logging.error("No images were uploaded to Telegram.")
 
 # Running the Pyrogram app and async main() properly
 if __name__ == "__main__":
