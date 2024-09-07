@@ -60,7 +60,7 @@ def generate_thumbnail(file_name, output_filename):
     command = [
         'vcsi', file_name, '-t', '-g', '1x1',
         '--metadata-position', 'hidden',
-        '--start-delay-percent', '25', '-o', output_filename
+        '-o', output_filename
     ]
     try:
         subprocess.run(command, check=True, capture_output=True)
