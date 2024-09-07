@@ -3,7 +3,6 @@ import logging
 import requests
 from pyrogram import Client
 import praw
-from telegraph import Telegraph, exceptions
 import redgifs
 from PIL import Image
 from config import *
@@ -44,20 +43,19 @@ app = Client("SpidyReddit", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKE
 
 # Get image URLs from a subreddit
 async def get_image_urls(subreddit_name):
-    image_urls = []
-    gif_paths = []
+    urls = []
     for submission in reddit.subreddit(subreddit_name).hot(limit=50):  # limit to 50 submissions
         if "gallery" in submission.url:
             submission = reddit.submission(url=submission.url)
             for image_item in submission.media_metadata.values():
-                image_urls.append(image_item['s']['u'])
+                urls.append(image_item['s']['u'])
         elif "redgif" in submission.url:
             gif = await download_redgif(submission.url)
             if gif:
-                gif_paths.append(gif)
+                urls.append(gif)
         elif submission.url.startswith("https://i.redd.it"):
-            image_urls.append(submission.url)
-    return image_urls, gif_paths
+            urls.append(submission.url)
+    return urls
 
 # Download and compress image
 def download_and_compress_image(img_url, save_path="compressed.jpg"):
@@ -78,40 +76,6 @@ def download_and_compress_image(img_url, save_path="compressed.jpg"):
         return None
 
 
-
-# Upload an image to Telegraph
-def upload_image_to_telegraph(image_path):
-    try:
-        with open(image_path, 'rb') as f:
-            response = telegraph.upload_file(f)
-            # Check if the response is a list and if it contains a dictionary with the key "src"
-            if isinstance(response, list) and len(response) > 0:
-                file_info = response[0]  # Access the first element
-                if isinstance(file_info, dict) and "src" in file_info:
-                    return file_info["src"]  # Return the "src" attribute
-                else:
-                    logging.error(f"Unexpected response format: {file_info}")
-            else:
-                logging.error(f"Invalid response from Telegraph: {response}")
-    except exceptions.TelegraphException as e:
-        logging.error(f"TelegraphException: {e}")
-    except Exception as e:
-        logging.error(f"Error uploading to Telegraph: {e}")
-    return None
-
-
-
-# Upload multiple images to Telegraph page
-def upload_content_to_telegraph(title, content):
-    try:
-        page_content = [{'tag': 'h3', 'children': [title]}] + [{'tag': 'img', 'attrs': {'src': url}} for url in content]
-        return telegraph.create_page(title=title, author_name='PythonTelegraphBot', content=page_content)['url']
-    except exceptions.TelegraphException as e:
-        logging.error(f"TelegraphException: {e}")
-    except Exception as e:
-        logging.error(f"Error creating Telegraph page: {e}")
-    return None
-
 # Download Redgif
 async def download_redgif(link):
     try:
@@ -131,7 +95,7 @@ async def download_redgif(link):
 # Async main function to process subreddit images
 async def main():
  async with app:
-    subreddit_name = 'pussy'  # replace with your target subreddit
+    subreddit_name = 'braless'  # replace with your target subreddit
     image_urls, gif_paths = await get_image_urls(subreddit_name)
     uploaded_image_urls = []
     for image_url in image_urls:
@@ -140,14 +104,13 @@ async def main():
             if any(ext in image_url.lower() for ext in ["jpg", "png", "jpeg"]):
                 local_image_path = download_and_compress_image(image_url)
                 if local_image_path:
-                    #uploaded_url = upload_image_to_telegraph(local_image_path)
                     if True:
-                        #up_url = f"https://graph.org{uploaded_url}"
                         uploaded_image_urls.append(image_url)
                         await app.send_photo(LOG_ID, photo=local_image_path)
                         result = {"URL": image_url}
                         insert_document(db, collection_name, result)
                         os.remove(local_image_path)
+                        
 
     if uploaded_image_urls:
         logging.info(f"Uploaded images: {uploaded_image_urls}")
