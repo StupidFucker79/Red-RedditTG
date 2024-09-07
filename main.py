@@ -112,7 +112,7 @@ async def download_redgif(link):
 # Async main function to process subreddit images
 async def main():
  async with app:
-    subreddit_name = 'braless'  # replace with your target subreddit
+    subreddit_name = 'boobs'  # replace with your target subreddit
     image_urls, gif_paths = await get_image_urls(subreddit_name)
 
     uploaded_image_urls = []
