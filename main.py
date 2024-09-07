@@ -59,7 +59,7 @@ async def get_urls(subreddit_name):
 def generate_thumbnail(file_name, output_filename):
     command = [
         'vcsi', file_name, '-t', '-g', '1x1',
-        '--metadata-position', 'hidden',
+        'hidden',
         '-o', output_filename
     ]
     try:
