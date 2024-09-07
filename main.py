@@ -47,9 +47,7 @@ async def get_urls(subreddit_name):
             for image_item in submission.media_metadata.values():
                 urls.append(image_item['s']['u'])
         elif "redgif" in submission.url:
-            gif = await download_redgif(submission.url)
-            if gif:
-                urls.append(gif)
+                urls.append(submission.url)
         elif submission.url.startswith("https://i.redd.it"):
             urls.append(submission.url)
     return urls
@@ -96,7 +94,7 @@ async def main():
     urls = await get_urls(subreddit_name)
     uploaded_urls = []
     for url in urls:
-        logging.info(f"Processing image URL: {url}")  # This will now print and log
+        logging.info(f"Processing URL: {url}")  # This will now print and log
         if not check_db(db, collection_name, url):
             if any(ext in url.lower() for ext in ["jpg", "png", "jpeg"]):
                 local_path = download_and_compress_image(url)
