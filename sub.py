@@ -11,6 +11,9 @@ import redgifs
 from config import *
 from database import *
 from typing import List, Dict, Optional
+from pyrogram import enums
+
+
 
 # Initialize logging
 logging.basicConfig(
@@ -195,14 +198,14 @@ async def handle_media(url: str, post_data: Dict):
             # Handle image posts
             local_path = download_and_compress_image(url)
             if local_path:
-                await app.send_photo(LOG_ID, photo=local_path, caption=caption, parse_mode="Markdown")
+                await app.send_photo(LOG_ID, photo=local_path, caption=caption, parse_mode=enums.ParseMode.MARKDOWN)
         elif "redgif" in url:
             # Handle Redgif posts
             video_path = await download_redgif(url)
             if video_path:
                 thumb_path = f"{video_path}_thumb.jpg"
                 generate_thumbnail(video_path, thumb_path)
-                await app.send_video(LOG_ID, video=video_path, thumb=thumb_path, caption=caption, parse_mode="Markdown")
+                await app.send_video(LOG_ID, video=video_path, thumb=thumb_path, caption=caption,parse_mode=enums.ParseMode.MARKDOWN)
 
         # Insert into database
         insert_document(
@@ -218,7 +221,7 @@ async def handle_media(url: str, post_data: Dict):
             }
         )
     except Exception as e:
-        logging.error(f"Error handling media: {e}")        logging.error(f"Error handling media: {e}")
+        logging.error(f"Error handling media: {e}")
 
 # Main Function
 async def main():
