@@ -218,7 +218,8 @@ async def handle_media(url: str, post_data: Dict):
             }
         )
     except Exception as e:
-        logging.error(f"Error handling media: {e}")        logging.error(f"Error handling media: {e}")
+        logging.error(f"Error handling media: {e}")
+
 
 # Main Function
 async def main():
