@@ -124,7 +124,7 @@ class RedditFeedFetcher:
             logging.error(f"Error fetching joined subreddits: {e}")
             return []
 
-    async def fetch_subreddit_posts(self, subreddit_list: List[str], limit: int = 10) -> List[Dict]:
+    async def fetch_subreddit_posts(self, subreddit_list: List[str], limit: int = 100) -> List[Dict]:
         """Fetch posts from multiple subreddits."""
         posts = []
         try:
@@ -233,7 +233,8 @@ async def main():
             logging.info(f"Joined Subreddits: {joined_subreddits}")
 
             # Fetch posts from joined subreddits
-            posts = await fetcher.fetch_subreddit_posts(joined_subreddits, limit=10)
+            #posts = await fetcher.fetch_subreddit_posts(joined_subreddits, limit=10)
+            posts = await fetcher.fetch_subreddit_posts(["jav","javover30"])
             for post in posts:
                 await process_and_upload(post)
             await asyncio.sleep(300)  # Wait 5 minutes before fetching again
