@@ -190,7 +190,7 @@ async def handle_media(url: str, post_data: Dict):
 # Main Function
 async def main():
     fetcher = RedditFeedFetcher(reddit)
-    subreddits = ["BlowJob", "nsfw", "porn"]
+    subreddits = ["BlowJob","javover30","jav", "nsfw", "porn"]
     async with app:
         while True:
             try:
