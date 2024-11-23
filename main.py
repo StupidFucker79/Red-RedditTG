@@ -135,7 +135,7 @@ async def download_redgif(link):
 # Async main function to process subreddit images
 async def main():
     async with app:
-        subreddit_name = 'BlowJob'  # Replace with your target subreddit
+        subreddit_name = 'jav'  # Replace with your target subreddit
         urls = await get_urls(subreddit_name)
         uploaded_urls = []
 
