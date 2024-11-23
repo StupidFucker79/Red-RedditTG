@@ -233,8 +233,9 @@ async def main():
             logging.info(f"Joined Subreddits: {joined_subreddits}")
 
             # Fetch posts from joined subreddits
-            #posts = await fetcher.fetch_subreddit_posts(joined_subreddits, limit=10)
-            posts = await fetcher.fetch_subreddit_posts(["Hotwife","jav","javover30"])
+            posts = await fetcher.fetch_subreddit_posts(joined_subreddits, limit=10)
+            logging.info(f"Fetched Posts: {len(posts)}")
+            
             for post in posts:
                 await process_and_upload(post)
             await asyncio.sleep(300)  # Wait 5 minutes before fetching again
