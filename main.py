@@ -58,8 +58,35 @@ async def get_urls(subreddit_name):
             urls.append(submission.url)
     return urls
 
+
+# Generate thumbnail using ffmpeg 
+def generate_thumbnail(video_path, output_path, timestamp="00:00:3"):
+    """Generate a thumbnail from a video using ffmpeg.
+    
+    Args:
+        video_path: Path to input video
+        output_path: Path to save thumbnail
+        timestamp: Time to extract frame (e.g. "00:00:01" or "5")
+    """
+    command = [
+        'ffmpeg',
+        '-ss', str(timestamp),  # Seek to timestamp
+        '-i', video_path,       # Input file
+        '-vframes', '1',        # Extract one frame
+        '-q:v', '2',           # High quality
+        '-y',                  # Overwrite output
+        output_path
+    ]
+    try:
+        subprocess.run(command, check=True, capture_output=True)
+        print(f"Thumbnail saved as {output_path}")
+    except subprocess.CalledProcessError as e:
+        print(f"Error generating thumbnail: {e}")
+
+
+
 # Generate thumbnail using vcsi
-def generate_thumbnail(file_name, output_filename):
+def gen_thumbnail(file_name, output_filename):
     command = [
         'vcsi', file_name, '-t', '-g', '1x1',
         'hidden',
