@@ -10,7 +10,6 @@ import praw
 import redgifs
 from config import *
 from database import *
-from urllib.parse import urlparse
 from typing import List, Dict, Optional
 
 # Initialize logging
@@ -45,23 +44,21 @@ app = Client("SpidyReddit", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKE
 # Utilities
 def check_db(db, collection_name, url):
     """Check if a URL exists in the database."""
-    # Implement your database check logic here
     return False  # Placeholder logic
 
 def insert_document(db, collection_name, document):
     """Insert a document into the database."""
-    # Implement your database insert logic here
-    pass
+    pass  # Placeholder logic
 
 def generate_thumbnail(video_path: str, output_path: str, timestamp="00:00:03"):
     """Generate a thumbnail from a video."""
     command = [
         'ffmpeg',
-        '-ss', str(timestamp),  # Seek to timestamp
-        '-i', video_path,       # Input file
-        '-vframes', '1',        # Extract one frame
-        '-q:v', '2',            # High quality
-        '-y',                   # Overwrite output
+        '-ss', str(timestamp),
+        '-i', video_path,
+        '-vframes', '1',
+        '-q:v', '2',
+        '-y',
         output_path
     ]
     try:
@@ -79,7 +76,7 @@ def download_and_compress_image(img_url: str, save_path="compressed.jpg"):
                 for chunk in response.iter_content(1024):
                     f.write(chunk)
             with Image.open(save_path) as img:
-                if img.mode == "RGBA":  # Convert RGBA to RGB
+                if img.mode == "RGBA":
                     img = img.convert("RGB")
                 img.save(save_path, "JPEG", quality=85)
             return save_path
@@ -111,7 +108,20 @@ class RedditFeedFetcher:
     def __init__(self, reddit_client: praw.Reddit):
         self.reddit = reddit_client
 
-    async def fetch_subreddit_posts(self, subreddit_list: List[str], limit: int = 20) -> List[Dict]:
+    async def fetch_joined_subreddits(self) -> List[str]:
+        """Fetch all subreddits the user has joined."""
+        try:
+            joined_subreddits = [
+                subreddit.display_name
+                for subreddit in self.reddit.user.subreddits(limit=None)
+            ]
+            logging.info(f"Fetched {len(joined_subreddits)} joined subreddits.")
+            return joined_subreddits
+        except Exception as e:
+            logging.error(f"Error fetching joined subreddits: {e}")
+            return []
+
+    async def fetch_subreddit_posts(self, subreddit_list: List[str], limit: int = 10) -> List[Dict]:
         """Fetch posts from multiple subreddits."""
         posts = []
         try:
@@ -158,7 +168,6 @@ class RedditFeedFetcher:
             logging.error(f"Error processing submission: {e}")
             return None
 
-# Main Processing
 async def process_and_upload(post_data: Dict):
     """Process and upload media to Telegram."""
     try:
@@ -173,34 +182,61 @@ async def process_and_upload(post_data: Dict):
 async def handle_media(url: str, post_data: Dict):
     """Handle media download and send to Telegram."""
     try:
+        # Format caption with additional post details
+        caption = (
+            f"**{post_data['title']}**\n\n"
+            f"📍 **Subreddit**: r/{post_data['subreddit']}\n"
+            f"👤 **Author**: u/{post_data['author']}\n"
+            f"📅 **Uploaded**: {post_data['created_utc']}\n"
+            f"[Original Post]({post_data['url']})"
+        )
+
         if url.endswith((".jpg", ".jpeg", ".png")):
+            # Handle image posts
             local_path = download_and_compress_image(url)
             if local_path:
-                await app.send_photo(LOG_ID, photo=local_path, caption=post_data["title"])
+                await app.send_photo(LOG_ID, photo=local_path, caption=caption, parse_mode="markdown")
         elif "redgif" in url:
+            # Handle Redgif posts
             video_path = await download_redgif(url)
             if video_path:
                 thumb_path = f"{video_path}_thumb.jpg"
                 generate_thumbnail(video_path, thumb_path)
-                await app.send_video(LOG_ID, video=video_path, thumb=thumb_path, caption=post_data["title"])
-        insert_document(db, collection_name, {"URL": url, "title": post_data["title"]})
+                await app.send_video(LOG_ID, video=video_path, thumb=thumb_path, caption=caption, parse_mode="markdown")
+
+        # Insert into database
+        insert_document(
+            db,
+            collection_name,
+            {
+                "URL": url,
+                "title": post_data["title"],
+                "subreddit": post_data["subreddit"],
+                "author": post_data["author"],
+                "created_utc": post_data["created_utc"],
+                "original_url": post_data["url"]
+            }
+        )
     except Exception as e:
-        logging.error(f"Error handling media: {e}")
+        logging.error(f"Error handling media: {e}")        logging.error(f"Error handling media: {e}")
 
 # Main Function
 async def main():
     fetcher = RedditFeedFetcher(reddit)
-    subreddits = ["BlowJob","javover30","jav", "nsfw", "porn"]
     async with app:
-        while True:
-            try:
-                posts = await fetcher.fetch_subreddit_posts(subreddits, limit=20)
-                for post in posts:
-                    await process_and_upload(post)
-                await asyncio.sleep(300)  # Wait 5 minutes before fetching again
-            except Exception as e:
-                logging.error(f"Main loop error: {e}")
-                await asyncio.sleep(60)
+        try:
+            # Fetch joined subreddits
+            joined_subreddits = await fetcher.fetch_joined_subreddits()
+            logging.info(f"Joined Subreddits: {joined_subreddits}")
+
+            # Fetch posts from joined subreddits
+            posts = await fetcher.fetch_subreddit_posts(joined_subreddits, limit=10)
+            for post in posts:
+                await process_and_upload(post)
+            await asyncio.sleep(300)  # Wait 5 minutes before fetching again
+        except Exception as e:
+            logging.error(f"Main loop error: {e}")
+            await asyncio.sleep(60)
 
 if __name__ == "__main__":
     app.run(main())
