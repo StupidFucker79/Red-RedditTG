@@ -4,24 +4,22 @@ import logging
 import asyncio
 import aiohttp
 import requests
+from datetime import datetime, timedelta
 from PIL import Image
-from pyrogram import Client, filters
+from pyrogram import Client, filters, enums
 import praw
 import redgifs
 from config import *
 from database import *
 from typing import List, Dict, Optional
-from pyrogram import enums
-
-
 
 # Initialize logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("Reddit.log"),  # Log to file
-        logging.StreamHandler()            # Log to console
+        logging.FileHandler("Reddit.log"),
+        logging.StreamHandler()
     ]
 )
 logging.getLogger("pyrogram").setLevel(logging.WARNING)
@@ -44,25 +42,10 @@ collection_name = COLLECTION_NAME
 # Pyrogram client
 app = Client("SpidyReddit", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN, workers=100)
 
-# Utilities
-def check_db(db, collection_name, url):
-    """Check if a URL exists in the database."""
-    return False  # Placeholder logic
-
-def insert_document(db, collection_name, document):
-    """Insert a document into the database."""
-    pass  # Placeholder logic
-
 def generate_thumbnail(video_path: str, output_path: str, timestamp="00:00:03"):
-    """Generate a thumbnail from a video."""
     command = [
-        'ffmpeg',
-        '-ss', str(timestamp),
-        '-i', video_path,
-        '-vframes', '1',
-        '-q:v', '2',
-        '-y',
-        output_path
+        'ffmpeg', '-ss', str(timestamp), '-i', video_path,
+        '-vframes', '1', '-q:v', '2', '-y', output_path
     ]
     try:
         subprocess.run(command, check=True, capture_output=True)
@@ -71,7 +54,6 @@ def generate_thumbnail(video_path: str, output_path: str, timestamp="00:00:03"):
         logging.error(f"Error generating thumbnail: {e}")
 
 def download_and_compress_image(img_url: str, save_path="compressed.jpg"):
-    """Download and compress an image."""
     try:
         response = requests.get(img_url, stream=True)
         if response.status_code == 200:
@@ -88,7 +70,6 @@ def download_and_compress_image(img_url: str, save_path="compressed.jpg"):
         return None
 
 async def download_redgif(link: str) -> Optional[str]:
-    """Download a Redgif video."""
     try:
         api = redgifs.API()
         api.login()
@@ -106,13 +87,11 @@ async def download_redgif(link: str) -> Optional[str]:
         logging.error(f"Error downloading Redgif: {e}")
         return None
 
-# Reddit Feed Fetcher
 class RedditFeedFetcher:
     def __init__(self, reddit_client: praw.Reddit):
         self.reddit = reddit_client
 
     async def fetch_joined_subreddits(self) -> List[str]:
-        """Fetch all subreddits the user has joined."""
         try:
             joined_subreddits = [
                 subreddit.display_name
@@ -125,11 +104,17 @@ class RedditFeedFetcher:
             return []
 
     async def fetch_subreddit_posts(self, subreddit_list: List[str], limit: int = 100) -> List[Dict]:
-        """Fetch posts from multiple subreddits."""
         posts = []
         try:
             subreddit_string = "+".join(subreddit_list)
+            current_time = datetime.utcnow()
+            one_day_ago = current_time - timedelta(days=1)
+
             for submission in self.reddit.subreddit(subreddit_string).hot(limit=limit):
+                post_time = datetime.utcfromtimestamp(submission.created_utc)
+                if post_time < one_day_ago:
+                    continue
+                
                 post_data = await self._process_submission(submission)
                 if post_data:
                     posts.append(post_data)
@@ -138,7 +123,6 @@ class RedditFeedFetcher:
         return posts
 
     async def _process_submission(self, submission) -> Optional[Dict]:
-        """Process a single Reddit submission."""
         try:
             if check_db(db, collection_name, submission.url):
                 return None
@@ -172,8 +156,11 @@ class RedditFeedFetcher:
             return None
 
 async def process_and_upload(post_data: Dict):
-    """Process and upload media to Telegram."""
     try:
+        if check_db(db, collection_name, post_data["url"]):
+            logging.info(f"Post already uploaded: {post_data['url']}")
+            return
+
         if isinstance(post_data["media_url"], list):
             for url in post_data["media_url"]:
                 await handle_media(url, post_data)
@@ -183,9 +170,7 @@ async def process_and_upload(post_data: Dict):
         logging.error(f"Error processing post {post_data['id']}: {e}")
 
 async def handle_media(url: str, post_data: Dict):
-    """Handle media download and send to Telegram."""
     try:
-        # Format caption with additional post details
         caption = (
             f"**{post_data['title']}**\n\n"
             f"📍 **Subreddit**: r/{post_data['subreddit']}\n"
@@ -195,19 +180,16 @@ async def handle_media(url: str, post_data: Dict):
         )
 
         if url.endswith((".jpg", ".jpeg", ".png")):
-            # Handle image posts
             local_path = download_and_compress_image(url)
             if local_path:
                 await app.send_photo(LOG_ID, photo=local_path, caption=caption, parse_mode=enums.ParseMode.MARKDOWN)
         elif "redgif" in url:
-            # Handle Redgif posts
             video_path = await download_redgif(url)
             if video_path:
                 thumb_path = f"{video_path}_thumb.jpg"
                 generate_thumbnail(video_path, thumb_path)
-                await app.send_video(LOG_ID, video=video_path, thumb=thumb_path, caption=caption,parse_mode=enums.ParseMode.MARKDOWN)
+                await app.send_video(LOG_ID, video=video_path, thumb=thumb_path, caption=caption, parse_mode=enums.ParseMode.MARKDOWN)
 
-        # Insert into database
         insert_document(
             db,
             collection_name,
@@ -223,25 +205,29 @@ async def handle_media(url: str, post_data: Dict):
     except Exception as e:
         logging.error(f"Error handling media: {e}")
 
-# Main Function
 async def main():
     fetcher = RedditFeedFetcher(reddit)
     async with app:
-        try:
-            # Fetch joined subreddits
-            joined_subreddits = await fetcher.fetch_joined_subreddits()
-            logging.info(f"Joined Subreddits: {joined_subreddits}")
+        while True:
+            try:
+                joined_subreddits = await fetcher.fetch_joined_subreddits()
+                logging.info(f"Joined Subreddits: {joined_subreddits}")
 
-            # Fetch posts from joined subreddits
-            posts = await fetcher.fetch_subreddit_posts(joined_subreddits, limit=10)
-            logging.info(f"Fetched Posts: {len(posts)}")
-            
-            for post in posts:
-                await process_and_upload(post)
-            await asyncio.sleep(300)  # Wait 5 minutes before fetching again
-        except Exception as e:
-            logging.error(f"Main loop error: {e}")
-            await asyncio.sleep(60)
+                posts = await fetcher.fetch_subreddit_posts(joined_subreddits, limit=10)
+                logging.info(f"Fetched {len(posts)} new posts.")
+
+                for post in posts:
+                    await process_and_upload(post)
+                
+                await asyncio.sleep(300)
+            except Exception as e:
+                logging.error(f"Main loop error: {e}")
+                await asyncio.sleep(60)
 
 if __name__ == "__main__":
-    app.run(main())
+    try:
+        app.run(main())
+    except KeyboardInterrupt:
+        logging.info("Bot stopped by user.")
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
