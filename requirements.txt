@@ -7,6 +7,4 @@ Pillow
 praw
 aiohttp
 redgifs
-telegraph
 static-ffmpeg
-vcsi
