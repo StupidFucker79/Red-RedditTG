@@ -20,9 +20,9 @@ def insert_document(db, collection_name, document):
     try:
         collection = db[collection_name]
         collection.insert_one(document)
-        logging.info(f"Document inserted into database: {document['URL']}")
+        print(f"Document inserted into database: {document['URL']}")
     except Exception as e:
-        logging.error(f"Error inserting document: {e}")
+        print(f"Error inserting document: {e}")
 
 
 def find_documents(db, collection_name, query=None):
