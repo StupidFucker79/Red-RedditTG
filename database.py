@@ -11,13 +11,19 @@ def connect_to_mongodb(uri, db_name):
         print(f"Error: Could not connect to MongoDB.\n{e}")
         return None
 
+def check_db(db, collection_name, url):
+    collection = db[collection_name]
+    result = collection.find_one({"URL": url})
+    return result is not None
+
 def insert_document(db, collection_name, document):
     try:
         collection = db[collection_name]
-        result = collection.insert_one(document)
-        print(f"Inserted document with ID: {result.inserted_id}")
+        collection.insert_one(document)
+        logging.info(f"Document inserted into database: {document['URL']}")
     except Exception as e:
-        print(f"Error: Could not insert document.\n{e}")
+        logging.error(f"Error inserting document: {e}")
+
 
 def find_documents(db, collection_name, query=None):
     try:
@@ -31,12 +37,6 @@ def find_documents(db, collection_name, query=None):
     except Exception as e:
         print(f"Error: Could not retrieve documents.\n{e}")
         return []
-
-
-def check_db(db,collection_name,url):
-    documents = find_documents(db, collection_name)
-    urls = [doc["URL"] for doc in documents]
-    return url in urls
 
 
 def get_info(db,collection_name,url):
