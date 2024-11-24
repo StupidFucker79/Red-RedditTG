@@ -213,7 +213,7 @@ async def main():
                 joined_subreddits = await fetcher.fetch_joined_subreddits()
                 logging.info(f"Joined Subreddits: {joined_subreddits}")
 
-                posts = await fetcher.fetch_subreddit_posts(joined_subreddits, limit=10)
+                posts = await fetcher.fetch_subreddit_posts(joined_subreddits, limit=100)
                 logging.info(f"Fetched {len(posts)} new posts.")
 
                 for post in posts:
