@@ -12,6 +12,7 @@ import redgifs
 from config import *
 from database import *
 from typing import List, Dict, Optional
+import static_ffmpeg
 
 # Initialize logging
 logging.basicConfig(
@@ -23,6 +24,9 @@ logging.basicConfig(
     ]
 )
 logging.getLogger("pyrogram").setLevel(logging.WARNING)
+
+
+static_ffmpeg.add_paths()
 
 # Reddit API credentials
 reddit = praw.Reddit(
