@@ -20,7 +20,7 @@ def insert_document(db, collection_name, document):
     try:
         collection = db[collection_name]
         collection.insert_one(document)
-        print(f"Document inserted into database: {document["title"]}")
+        print(f"Document inserted into database: {document['title']}")
     except Exception as e:
         print(f"Error inserting document: {e}")
 
