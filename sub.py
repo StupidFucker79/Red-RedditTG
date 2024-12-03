@@ -107,14 +107,14 @@ class RedditFeedFetcher:
             logging.error(f"Error fetching joined subreddits: {e}")
             return []
 
-    async def fetch_subreddit_posts(self, subreddit_list: List[str], limit: int = 100) -> List[Dict]:
+    async def fetch_subreddit_posts(self, subreddit_list: List[str], limit: int = 200) -> List[Dict]:
         posts = []
         try:
             subreddit_string = "+".join(subreddit_list)
             current_time = datetime.utcnow()
-            one_day_ago = current_time - timedelta(days=1)
-
+            one_day_ago = current_time - timedelta(days=2)
             for submission in self.reddit.subreddit(subreddit_string).hot(limit=limit):
+                
                 post_time = datetime.utcfromtimestamp(submission.created_utc)
                 if post_time < one_day_ago:
                     continue
