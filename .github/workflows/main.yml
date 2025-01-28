@@ -1,0 +1,48 @@
+name: Main
+
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+  schedule:
+    - cron:  '0 */6 * * *'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  # Job to run Python script and generate content
+  generate-content:
+    runs-on: ubuntu-latest
+    steps:
+      # Checkout the repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Building Image
+        run: docker build -t bot .
+      - name: Running Container
+        run: docker run --name GenBot -v "$(pwd)/generated_pages:/app/generated_pages"  bot   
+      # Upload the generated content as an artifact
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: './generated_pages'  # Directory where your script generates content
+
+  # Job to deploy to GitHub Pages
+  deploy-to-pages:
+    needs: generate-content
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
