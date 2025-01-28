@@ -4,45 +4,37 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
   schedule:
-    - cron:  '0 */6 * * *'
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# Allow only one concurrent deployment
-concurrency:
-  group: "pages"
-  cancel-in-progress: true
+    - cron: '0 */6 * * *'
 
 jobs:
-  # Job to run Python script and generate content
   generate-content:
     runs-on: ubuntu-latest
+    timeout-minutes: 30 # Set the maximum runtime for the job
+
     steps:
       # Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Building Image
-        run: docker build -t bot .
-      - name: Running Container
-        run: docker run --name GenBot -v "$(pwd)/generated_pages:/app/generated_pages"  bot   
-      # Upload the generated content as an artifact
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
-        with:
-          path: './generated_pages'  # Directory where your script generates content
 
-  # Job to deploy to GitHub Pages
-  deploy-to-pages:
-    needs: generate-content
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v2
+      # Create and download the .env file from GitHub Secret
+      - name: Download .env file
+        run: echo "${{ secrets.ENV_FILE }}" > .env
+        continue-on-error: false # Fails the workflow if this step fails
+
+      # Install Requirements
+      - name: Install Requirements
+        run: |
+          pip install -r requirements.txt
+        continue-on-error: false # Ensure this step fails the workflow if requirements fail
+
+      # Running the Python Script
+      - name: Run the Python Script
+        run: |
+          python3 main.py
+        continue-on-error: false # Stop the workflow if the script fails
+
+      # Error Handling (If the job fails)
+      - name: Notify on Failure
+        if: failure() # Executes only if any previous step fails
+        run: |
+          echo "Workflow failed. Please check the logs for more details."
