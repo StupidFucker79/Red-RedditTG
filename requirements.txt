@@ -8,3 +8,4 @@ praw
 aiohttp
 redgifs
 static-ffmpeg
+tzdata
