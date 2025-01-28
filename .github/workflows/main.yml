@@ -16,11 +16,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Create and download the .env file from GitHub Secret
-      - name: Download .env file
-        run: curl "${{ secrets.ENV_URL }}" > .env
-        continue-on-error: false # Fails the workflow if this step fails
-
+    
       # Install Requirements
       - name: Install Requirements
         run: |
