@@ -4,7 +4,8 @@ import logging
 import asyncio
 import aiohttp
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from PIL import Image
 from pyrogram import Client, filters, enums
 import praw
@@ -25,6 +26,8 @@ logging.basicConfig(
 )
 logging.getLogger("pyrogram").setLevel(logging.WARNING)
 
+# Create IST timezone object
+IST = ZoneInfo("Asia/Kolkata")
 
 static_ffmpeg.add_paths()
 
@@ -111,11 +114,13 @@ class RedditFeedFetcher:
         posts = []
         try:
             subreddit_string = "+".join(subreddit_list)
-            current_time = datetime.utcnow()
+            current_time = datetime.now(IST)
             one_day_ago = current_time - timedelta(days=2)
+            
             for submission in self.reddit.subreddit(subreddit_string).hot(limit=limit):
+                # Convert UTC timestamp to IST
+                post_time = datetime.fromtimestamp(submission.created_utc, tz=timezone.utc).astimezone(IST)
                 
-                post_time = datetime.utcfromtimestamp(submission.created_utc)
                 if post_time < one_day_ago:
                     continue
                 
@@ -175,11 +180,15 @@ async def process_and_upload(post_data: Dict):
 
 async def handle_media(url: str, post_data: Dict):
     try:
+        # Convert UTC timestamp to IST for display
+        ist_time = datetime.fromtimestamp(post_data['created_utc'], tz=timezone.utc).astimezone(IST)
+        formatted_time = ist_time.strftime("%Y-%m-%d %I:%M %p IST")
+        
         caption = (
             f"**{post_data['title']}**\n\n"
             f"📍 **Subreddit**: r/{post_data['subreddit']}\n"
             f"👤 **Author**: u/{post_data['author']}\n"
-            f"📅 **Uploaded**: {post_data['created_utc']}\n"
+            f"📅 **Uploaded**: {formatted_time}\n"
             f"[Original Post]({post_data['url']})"
         )
 
