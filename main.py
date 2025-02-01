@@ -221,7 +221,7 @@ async def handle_media(url: str, post_data: Dict):
 async def main():
     fetcher = RedditFeedFetcher(reddit)
     async with app:
-        while True:
+        if True:
             try:
                 joined_subreddits = await fetcher.fetch_joined_subreddits()
                 logging.info(f"Joined Subreddits: {joined_subreddits}")
