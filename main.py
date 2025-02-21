@@ -226,13 +226,12 @@ async def main():
                 joined_subreddits = await fetcher.fetch_joined_subreddits()
                 logging.info(f"Joined Subreddits: {joined_subreddits}")
 
-                posts = await fetcher.fetch_subreddit_posts(joined_subreddits, limit=100)
+                posts = await fetcher.fetch_subreddit_posts(joined_subreddits, limit=200)
                 logging.info(f"Fetched {len(posts)} new posts.")
 
                 for post in posts:
                     await process_and_upload(post)
-                
-                await asyncio.sleep(300)
+    
             except Exception as e:
                 logging.error(f"Main loop error: {e}")
                 await asyncio.sleep(60)
